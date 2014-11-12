@@ -65,7 +65,7 @@ conn_handler.add_to_queue(
     ['{0}', '{1}']) # doctest: +SKIP
 conn_handler.execute_queue("example_queue") # doctest: +SKIP
 conn_handler.execute_fetchall(
-    "SELECT * from qiita.qiita_user WHERE email = %s", ['insert@foo.bar'])
+    "SELECT * from user WHERE email = %s", ['insert@foo.bar'])
 [['insert@foo.bar', 1, 'pass', 'Toy', None, None, '222-222-2221', None, None,
   None]] # doctest: +SKIP
 """
