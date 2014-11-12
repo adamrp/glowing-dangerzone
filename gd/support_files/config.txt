@@ -18,7 +18,7 @@ USER = postgres
 ADMIN_USER = postgres
 
 # The database to connect to
-DATABASE = gd_test
+DATABASE = sql_handler_test
 
 # The host where the database lives on
 HOST = localhost

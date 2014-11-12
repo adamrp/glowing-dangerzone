@@ -6,7 +6,8 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 
-import os
+from os import environ
+from os.path import dirname, abspath, join
 from future import standard_library
 with standard_library.hooks():
     from configparser import ConfigParser
@@ -34,7 +35,13 @@ class GDConfig(object):
     """
 
     def __init__(self):
-        conf_fp = os.environ['GD_CONFIG_FP']
+        # If GD_CONFIG_FP is not set, default to the example in the repo
+        try:
+            conf_fp = environ['GD_CONFIG_FP']
+        except KeyError:
+            conf_fp = join(dirname(abspath(__file__)),
+                           'support_files', 'config.txt')
+
         # parse the config bits
         config = ConfigParser()
         with open(conf_fp) as f:
@@ -47,3 +54,6 @@ class GDConfig(object):
         self.port = config.getint('postgres', 'PORT')
         self.admin_user = config.get('postgres', 'ADMIN_USER') or None
         self.admin_password = config.get('postgres', 'ADMIN_PASSWORD') or None
+
+
+gd_config = GDConfig()

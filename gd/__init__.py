@@ -6,6 +6,6 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 
-from gd.config import GDConfig
+from gd.sql_connection import SQLConnectionHandler
 
-gd_config = GDConfig()
+__all__ = ['SQLConnectionHandler']

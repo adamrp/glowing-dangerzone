@@ -38,8 +38,9 @@ setup(name='gd',
       author_email="jose.navasmolina@colorado.edu",
       url='http://github.com/biocore/glowing-dangerzone.git',
       test_suite='nose.collector',
-      packages=['moi'],
-      extras_require={'test': ["nose >= 0.10.1", "pep8", 'mock']},
-      install_requires=['psycopg2'],
+      packages=['gd'],
+      package_data={'gd': ['support_files/config.txt']},
+      extras_require={'test': ["nose >= 0.10.1", "pep8", 'flake8', 'mock']},
+      install_requires=['psycopg2', 'future==0.13.0'],
       classifiers=classifiers
       )
