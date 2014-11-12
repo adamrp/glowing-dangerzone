@@ -13,8 +13,8 @@ install:
   - source activate env_name
   - pip install .
 script:
-  - psql -U postgres -d sql_handler_test
+  - psql -U postgres -c "CREATE DATABASE sql_handler_test;"
   - nosetests --with-doctest --with-coverage
-  - flake8 qiita_* setup.py scripts
+  - flake8 gd setup.py
 after_success:
   - coveralls
