@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013, The Qiita Development Team.
+# Copyright (c) 2014--, The biocore Development Team.
 #
 # Distributed under the terms of the BSD 3-clause License.
 #
@@ -34,13 +34,13 @@ setup(name='gd',
       long_description=long_description,
       license="BSD",
       description='SQL connection handler',
-      author="Qiita development team",
-      author_email="jose.navasmolina@colorado.edu",
+      author="Biocore development team",
+      author_email="josenavasmolina@gmail.com",
       url='http://github.com/biocore/glowing-dangerzone.git',
       test_suite='nose.collector',
       packages=['gd'],
       package_data={'gd': ['support_files/config.txt']},
-      extras_require={'test': ["nose >= 0.10.1", "pep8", 'flake8', 'mock']},
+      extras_require={'test': ["nose >= 0.10.1", "pep8", 'flake8']},
       install_requires=['psycopg2', 'future==0.13.0'],
       classifiers=classifiers
       )

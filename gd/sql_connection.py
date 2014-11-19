@@ -107,9 +107,9 @@ class SQLConnectionHandler(object):
         Whether or not to connect as the admin user. Options other than
         `no_admin` depend on admin credentials in the glowing-dangerzone
         configuration. If 'admin_without_database', the connection will be made
-        to the server specified in the qiita configuration, but not to a
+        to the server specified in the gd configuration, but not to a
         specific database. If 'admin_with_database', then a connection will be
-        made to the server and database specified in the qiita config.
+        made to the server and database specified in the gd config.
     """.format(INIT_ADMIN_OPTS)
 
     def __init__(self, admin='no_admin'):
