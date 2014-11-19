@@ -24,21 +24,21 @@ SQL is the sql string in psycopg2 format with \%s markup, and sql_args is the
 list or tuple of replacement items.
 An example of a basic queue with two SQL commands in a single transaction:
 
-from gd.sql_connection import SQLConnectionHandler
-conn_handler = SQLConnectionHandler # doctest: +SKIP
-conn_handler.create_queue("example_queue") # doctest: +SKIP
-conn_handler.add_to_queue(
-    "example_queue", "INSERT INTO user (email, name, password,"
-    "phone) VALUES (%s, %s, %s, %s)",
-    ['insert@foo.bar', 'Toy', 'pass', '111-111-11112']) # doctest: +SKIP
-conn_handler.add_to_queue(
-    "example_queue", "UPDATE user SET user_level_id = 1, "
-    "phone = '222-222-2221' WHERE email = %s",
-    ['insert@foo.bar']) # doctest: +SKIP
-conn_handler.execute_queue("example_queue") # doctest: +SKIP
-conn_handler.execute_fetchall(
-    "SELECT * FROM user WHERE email = %s",
-    ['insert@foo.bar']) # doctest: +SKIP
+>>> from gd.sql_connection import SQLConnectionHandler
+>>> conn_handler = SQLConnectionHandler # doctest: +SKIP
+>>> conn_handler.create_queue("example_queue") # doctest: +SKIP
+>>> conn_handler.add_to_queue(
+...     "example_queue", "INSERT INTO user (email, name, password,"
+...     "phone) VALUES (%s, %s, %s, %s)",
+...     ['insert@foo.bar', 'Toy', 'pass', '111-111-11112']) # doctest: +SKIP
+>>> conn_handler.add_to_queue(
+...     "example_queue", "UPDATE user SET user_level_id = 1, "
+...     "phone = '222-222-2221' WHERE email = %s",
+...     ['insert@foo.bar']) # doctest: +SKIP
+>>> conn_handler.execute_queue("example_queue") # doctest: +SKIP
+>>> conn_handler.execute_fetchall(
+...     "SELECT * FROM user WHERE email = %s",
+...     ['insert@foo.bar']) # doctest: +SKIP
 [['insert@foo.bar', 1, 'pass', 'Toy', None, None, '222-222-2221', None, None,
   None]] # doctest: +SKIP
 
@@ -52,20 +52,21 @@ will be cleaned out.
 Modifying the previous example to show this ability (Note the RETURNING added
 to the first SQL command):
 
-from gd.sql_connection import SQLConnectionHandler
-conn_handler = SQLConnectionHandler # doctest: +SKIP
-conn_handler.create_queue("example_queue") # doctest: +SKIP
-conn_handler.add_to_queue(
-    "example_queue", "INSERT INTO user (email, name, password,"
-    "phone) VALUES (%s, %s, %s, %s) RETURNING email, password",
-    ['insert@foo.bar', 'Toy', 'pass', '111-111-11112']) # doctest: +SKIP
-conn_handler.add_to_queue(
-    "example_queue", "UPDATE user SET user_level_id = 1, "
-    "phone = '222-222-2221' WHERE email = %s AND password = %s",
-    ['{0}', '{1}']) # doctest: +SKIP
-conn_handler.execute_queue("example_queue") # doctest: +SKIP
-conn_handler.execute_fetchall(
-    "SELECT * from user WHERE email = %s", ['insert@foo.bar'])
+>>> from gd.sql_connection import SQLConnectionHandler
+>>> conn_handler = SQLConnectionHandler # doctest: +SKIP
+>>> conn_handler.create_queue("example_queue") # doctest: +SKIP
+>>> conn_handler.add_to_queue(
+...     "example_queue", "INSERT INTO user (email, name, password,"
+...     "phone) VALUES (%s, %s, %s, %s) RETURNING email, password",
+...     ['insert@foo.bar', 'Toy', 'pass', '111-111-11112']) # doctest: +SKIP
+>>> conn_handler.add_to_queue(
+...     "example_queue", "UPDATE user SET user_level_id = 1, "
+...     "phone = '222-222-2221' WHERE email = %s AND password = %s",
+...     ['{0}', '{1}']) # doctest: +SKIP
+>>> conn_handler.execute_queue("example_queue") # doctest: +SKIP
+>>> conn_handler.execute_fetchall(
+...     "SELECT * from user WHERE email = %s",
+...     ['insert@foo.bar']) # doctest: +SKIP
 [['insert@foo.bar', 1, 'pass', 'Toy', None, None, '222-222-2221', None, None,
   None]] # doctest: +SKIP
 """
@@ -78,6 +79,7 @@ conn_handler.execute_fetchall(
 # -----------------------------------------------------------------------------
 from __future__ import division
 from contextlib import contextmanager
+from functools import partial
 from itertools import chain
 
 from psycopg2 import connect, ProgrammingError, Error as PostgresError
@@ -85,8 +87,8 @@ from psycopg2.extras import DictCursor
 from psycopg2.extensions import (ISOLATION_LEVEL_AUTOCOMMIT,
                                  ISOLATION_LEVEL_READ_COMMITTED)
 
+from gd import gd_config
 from gd.exceptions import GDExecutionError, GDConnectionError
-from gd.config import gd_config
 
 INIT_ADMIN_OPTS = {'no_admin', 'admin_with_database', 'admin_without_database'}
 
@@ -115,17 +117,20 @@ class SQLConnectionHandler(object):
             raise RuntimeError("admin takes only on of %s" % INIT_ADMIN_OPTS)
 
         self.admin = admin
+        self._connection = None
         self._open_connection()
         # queues for transaction blocks. Format is {str: list} where the str
         # is the queue name and the list is the queue of SQL commands
         self.queues = {}
 
     def __del__(self):
-        # make sure if connection close fails it doesn't raise error
-        # should only error if connection already closed
+        # Close the connection only if it is not already closed
         try:
-            self._connection.close()
-        except:
+            if self._connection and not self._connection.closed:
+                self._connection.close()
+        except AttributeError:
+            # There was an issue initializing the connection attribute and
+            # it does not exist
             pass
 
     def _open_connection(self):
@@ -243,19 +248,19 @@ class SQLConnectionHandler(object):
 
         # Execute the query
         with self.get_postgres_cursor() as cur:
+            execute = partial(cur.executemany if many else cur.execute,
+                              sql, sql_args)
             try:
-                if many:
-                    cur.executemany(sql, sql_args)
-                else:
-                    cur.execute(sql, sql_args)
+                execute()
                 yield cur
-                self._connection.commit()
             except PostgresError as e:
                 self._connection.rollback()
                 raise GDExecutionError(("\nError running SQL query: %s"
                                         "\nARGS: %s"
                                         "\nError: %s" %
                                         (sql, str(sql_args), e)))
+            else:
+                self._connection.commit()
 
     def execute(self, sql, sql_args=None):
         """ Executes an SQL query with no results
@@ -413,13 +418,12 @@ class SQLConnectionHandler(object):
         -----
         Queues are executed in FIFO order
         """
-        if many:
-            for args in sql_args:
-                self._check_sql_args(args)
-                self.queues[queue].append((sql, args))
-        else:
-            self._check_sql_args(sql_args)
-            self.queues[queue].append((sql, sql_args))
+        if not many:
+            sql_args = [sql_args]
+
+        for args in sql_args:
+            self._check_sql_args(args)
+            self.queues[queue].append((sql, args))
 
     def _rollback_raise_error(self, queue, sql, sql_args, e):
         self._connection.rollback()
@@ -480,7 +484,7 @@ class SQLConnectionHandler(object):
                 except ProgrammingError as e:
                     # ignore error if nothing to fetch
                     pass
-                except Exception as e:
+                except PostgresError as e:
                     self._rollback_raise_error(queue, sql, sql_args, e)
                 else:
                     # append all results linearly

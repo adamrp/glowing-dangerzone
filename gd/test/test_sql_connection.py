@@ -5,9 +5,9 @@ from psycopg2 import connect, ProgrammingError
 from psycopg2.extensions import (ISOLATION_LEVEL_AUTOCOMMIT,
                                  ISOLATION_LEVEL_READ_COMMITTED)
 
+from gd import gd_config
 from gd.sql_connection import SQLConnectionHandler
 from gd.exceptions import GDExecutionError, GDConnectionError
-from gd.config import gd_config
 
 
 DB_LAYOUT = """CREATE TABLE test_table (
