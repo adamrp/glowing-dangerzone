@@ -363,7 +363,7 @@ class TestConnHandler(TestCase):
     def test_huge_queue(self):
         self.conn_handler.create_queue("test_queue")
         # add tons of inserts to queue
-        for x in range(120):
+        for x in range(1000):
             self.conn_handler.add_to_queue(
                 "test_queue",
                 "INSERT INTO test_table (int_column) VALUES (%s)", (x,))

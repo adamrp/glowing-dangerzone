@@ -175,7 +175,7 @@ class SQLConnectionHandler(object):
             with self._connection.cursor(cursor_factory=DictCursor) as cur:
                 yield cur
         except PostgresError as e:
-            raise GDConnectionError("Cannot get postgres cursor! %s" % e)
+            raise GDConnectionError("Error running query: %s" % e)
 
     @property
     def autocommit(self):
@@ -192,12 +192,14 @@ class SQLConnectionHandler(object):
     def _check_sql_args(self, sql_args):
         """Checks that sql_args have the correct type
 
-        If no error is raised, it just returns the execution to the caller
-
         Parameters
         ----------
         sql_args : object
             The SQL arguments
+
+        Returns
+        -------
+        None
 
         Raises
         ------
@@ -270,10 +272,12 @@ class SQLConnectionHandler(object):
         GDExecutionError
             if there is some error executing the SQL query
 
-        Note: from psycopg2 documentation, only variable values should be bound
-            via sql_args, it shouldn't be used to set table or field names. For
-            those elements, ordinary string formatting should be used before
-            running execute.
+        Notes
+        -----
+        From psycopg2 documentation, only variable values should be bound via
+        sql_args, it shouldn't be used to set table or field names. For those
+        elements, ordinary string formatting should be used before running
+        execute.
         """
         with self._sql_executor(sql, sql_args):
             pass
@@ -293,10 +297,12 @@ class SQLConnectionHandler(object):
         GDExecutionError
             If there is some error executing the SQL query
 
-        Note: from psycopg2 documentation, only variable values should be bound
-            via sql_args, it shouldn't be used to set table or field names. For
-            those elements, ordinary string formatting should be used before
-            running execute.
+        Notes
+        -----
+        From psycopg2 documentation, only variable values should be bound via
+        sql_args, it shouldn't be used to set table or field names. For those
+        elements, ordinary string formatting should be used before running
+        execute.
         """
         with self._sql_executor(sql, sql_args_list, True):
             pass
@@ -321,10 +327,12 @@ class SQLConnectionHandler(object):
         GDExecutionError
             if there is some error executing the SQL query
 
-        Note: from psycopg2 documentation, only variable values should be bound
-            via sql_args, it shouldn't be used to set table or field names. For
-            those elements, ordinary string formatting should be used before
-            running execute.
+        Notes
+        -----
+        From psycopg2 documentation, only variable values should be bound via
+        sql_args, it shouldn't be used to set table or field names. For those
+        elements, ordinary string formatting should be used before running
+        execute.
         """
         with self._sql_executor(sql, sql_args) as pgcursor:
             result = pgcursor.fetchone()
@@ -350,14 +358,20 @@ class SQLConnectionHandler(object):
         GDExecutionError
             If there is some error executing the SQL query
 
-        Note: from psycopg2 documentation, only variable values should be bound
-            via sql_args, it shouldn't be used to set table or field names. For
-            those elements, ordinary string formatting should be used before
-            running execute.
+        Notes
+        -----
+        From psycopg2 documentation, only variable values should be bound via
+        sql_args, it shouldn't be used to set table or field names. For those
+        elements, ordinary string formatting should be used before running
+        execute.
         """
         with self._sql_executor(sql, sql_args) as pgcursor:
             result = pgcursor.fetchall()
         return result
+
+    def _check_queue_exists(self, queue_name):
+        if queue_name not in self.queues:
+            raise KeyError("Queue %s does not exists" % queue_name)
 
     def create_queue(self, queue_name):
         """Add a new queue to the connection
@@ -411,6 +425,8 @@ class SQLConnectionHandler(object):
         -----
         Queues are executed in FIFO order
         """
+        self._check_queue_exists(queue)
+
         if not many:
             sql_args = [sql_args]
 
@@ -441,6 +457,8 @@ class SQLConnectionHandler(object):
 
         Queues are executed in FIFO order
         """
+        self._check_queue_exists(queue)
+
         with self.get_postgres_cursor() as cur:
             results = []
             clear_res = False
@@ -475,7 +493,11 @@ class SQLConnectionHandler(object):
                 try:
                     res = cur.fetchall()
                 except ProgrammingError as e:
-                    # ignore error if nothing to fetch
+                    # At this execution point, we don't know if the sql query
+                    # that we executed was a INSERT or a SELECT. If it was a
+                    # SELECT and there is nothing to fetch, it will return an
+                    # empty list. However, if it was a INSERT it will raise a
+                    # ProgrammingError, so we catch that one and pass.
                     pass
                 except PostgresError as e:
                     self._rollback_raise_error(queue, sql, sql_args, e)
