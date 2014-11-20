@@ -1,6 +1,6 @@
 r"""
 SQL Connection object (:mod:`gd.sql_connection`)
-======================================================
+================================================
 
 .. currentmodule:: gd.sql_connection
 
@@ -114,7 +114,8 @@ class SQLConnectionHandler(object):
 
     def __init__(self, admin='no_admin'):
         if admin not in INIT_ADMIN_OPTS:
-            raise RuntimeError("admin takes only on of %s" % INIT_ADMIN_OPTS)
+            raise GDConnectionError(
+                "admin takes only on of %s" % INIT_ADMIN_OPTS)
 
         self.admin = admin
         self._connection = None
@@ -168,7 +169,6 @@ class SQLConnectionHandler(object):
         Raises a GDConnectionError if the cursor cannot be created
         """
         if self._connection.closed:
-            # Currently defaults to non-admin connection
             self._open_connection()
 
         try:
@@ -177,23 +177,16 @@ class SQLConnectionHandler(object):
         except PostgresError as e:
             raise GDConnectionError("Cannot get postgres cursor! %s" % e)
 
-    def set_autocommit(self, on_or_off):
-        """Sets the isolation level to autocommit or default (read committed)
+    @property
+    def autocommit(self):
+        return self._connection.isolation_level == ISOLATION_LEVEL_AUTOCOMMIT
 
-        Parameters
-        ----------
-        on_or_off : {'on', 'off'}
-            If 'on', isolation level will be set to autocommit. Otherwise,
-            it will be set to read committed.
-        """
-        if on_or_off not in {'on', 'off'}:
-            raise ValueError("set_autocommit takes only 'on' or 'off'")
-
-        if on_or_off == 'on':
-            level = ISOLATION_LEVEL_AUTOCOMMIT
-        else:
-            level = ISOLATION_LEVEL_READ_COMMITTED
-
+    @autocommit.setter
+    def autocommit(self, value):
+        if not isinstance(value, bool):
+            raise TypeError('The value for autocommit should be a boolean')
+        level = (ISOLATION_LEVEL_AUTOCOMMIT if value
+                 else ISOLATION_LEVEL_READ_COMMITTED)
         self._connection.set_isolation_level(level)
 
     def _check_sql_args(self, sql_args):

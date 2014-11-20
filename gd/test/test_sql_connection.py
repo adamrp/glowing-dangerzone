@@ -91,7 +91,7 @@ class TestConnHandler(TestCase):
 
     def test_init_admin_error(self):
         """Init raises an error if admin is an unrecognized value"""
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(GDConnectionError):
             SQLConnectionHandler(admin='not a valid value')
 
     def test_init_connection_error(self):
@@ -110,22 +110,29 @@ class TestConnHandler(TestCase):
         with self.assertRaises(GDConnectionError):
             SQLConnectionHandler()
 
-    def test_set_autocommit(self):
-        """set_autocommit correctly activates/deactivates the autocommit"""
+    def test_autocommit(self):
+        """correctly retrieves if the autocommit is activated or not"""
+        self.assertFalse(self.conn_handler.autocommit)
+        self.conn_handler._connection.set_isolation_level(
+            ISOLATION_LEVEL_AUTOCOMMIT)
+        self.assertTrue(self.conn_handler.autocommit)
+
+    def test_autocommit_setter(self):
+        """correctly activates/deactivates the autocommit"""
         self.assertEqual(self.conn_handler._connection.isolation_level,
                          ISOLATION_LEVEL_READ_COMMITTED)
-        self.conn_handler.set_autocommit('on')
+        self.conn_handler.autocommit = True
         self.assertEqual(self.conn_handler._connection.isolation_level,
                          ISOLATION_LEVEL_AUTOCOMMIT)
-        self.conn_handler.set_autocommit('off')
+        self.conn_handler.autocommit = False
         self.assertEqual(self.conn_handler._connection.isolation_level,
                          ISOLATION_LEVEL_READ_COMMITTED)
 
-    def test_set_autocommit_error(self):
-        """set_autocommit raises an error if the parameter is not 'on' or 'off'
+    def test_autocommit_setter_error(self):
+        """autocommit raises an error if the parameter is not a boolean
         """
-        with self.assertRaises(ValueError):
-            self.conn_handler.set_autocommit('not a valid value')
+        with self.assertRaises(TypeError):
+            self.conn_handler.autocommit = 'not a valid value'
 
     def test_check_sql_args(self):
         """check_sql_args returns the execution to the caller if type is ok"""
