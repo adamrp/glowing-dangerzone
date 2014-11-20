@@ -94,6 +94,20 @@ class TestConnHandler(TestCase):
         with self.assertRaises(GDConnectionError):
             SQLConnectionHandler(admin='not a valid value')
 
+    def test_init_admin_with_database(self):
+        """Init works with admin_with_database"""
+        obs = SQLConnectionHandler(admin='admin_with_database')
+        self.assertEqual(obs.admin, 'admin_with_database')
+        self.assertEqual(obs.queues, {})
+        self.assertTrue(isinstance(obs._connection, connection))
+
+    def test_init_admin_without_database(self):
+        """Init works with admin_with_database"""
+        obs = SQLConnectionHandler(admin='admin_without_database')
+        self.assertEqual(obs.admin, 'admin_without_database')
+        self.assertEqual(obs.queues, {})
+        self.assertTrue(isinstance(obs._connection, connection))
+
     def test_init_connection_error(self):
         """init raises an error if cannot connect to the database"""
         # We first need to close all the connexions
